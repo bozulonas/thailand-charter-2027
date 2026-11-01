@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Thailand charter routes · March 2027</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html,body{margin:0;height:100%;font-family:Arial,Helvetica,sans-serif;color:#1f2933}
+  #app{display:flex;height:100%}
+  #side{width:340px;flex:none;overflow-y:auto;border-right:1px solid #d9dee4;background:#fbfcfd}
+  #map{flex:1}
+  header{padding:14px 16px 8px}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{font-size:12px;color:#5f6b7a;line-height:1.4}
+  .tabs{display:flex;gap:6px;padding:8px 16px}
+  .tabs button{flex:1;padding:7px 4px;border:1px solid #c9d1da;background:#fff;border-radius:6px;font-size:13px;cursor:pointer}
+  .tabs button.on{color:#fff;border-color:transparent}
+  .tabs button.on[data-r=A]{background:#d9480f}.tabs button.on[data-r=B]{background:#1971c2}.tabs button.on[data-r=both]{background:#495057}
+  .summary{margin:4px 16px 8px;font-size:13px;line-height:1.45}
+  .day{margin:0 10px 6px;padding:8px 10px;border-radius:8px;border:1px solid #e3e7ec;background:#fff;cursor:pointer}
+  .day:hover{border-color:#9aa5b1}
+  .day .t{font-weight:bold;font-size:13px}
+  .day .m{font-size:12px;color:#5f6b7a;margin-top:2px;line-height:1.35}
+  .day .nm{float:right;font-size:12px;font-weight:bold}
+  .tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;margin:3px 3px 0 0;background:#eef1f4}
+  .tag.hong{background:#d3f0dc}.tag.blue{background:#d6ebff}.tag.spare{background:#fff0c2}.tag.long{background:#ffe0d1}
+  .legend{margin:10px 16px 16px;font-size:12px;color:#5f6b7a;line-height:1.6}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1px solid #0003}
+  .warn{margin:0 16px 12px;padding:8px 10px;font-size:12px;background:#fff6e5;border:1px solid #f5d9a8;border-radius:6px;line-height:1.4}
+  .leaflet-popup-content{font-size:13px;line-height:1.4}
+  .nlwrap{background:none;border:0}
+  .nl{display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:12px}
+  .nb{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;color:#fff;font-weight:bold;font-size:12px;border:2px solid #fff;box-shadow:0 1px 3px #0006}
+  .nb.fin{background:#212529;width:auto;padding:0 7px;border-radius:11px}
+  .np{background:#fffffff0;border:1px solid #c9d1da;border-radius:6px;padding:2px 6px;margin-left:3px;box-shadow:0 1px 3px #0002;line-height:1.3}
+  .np b{font-size:12px}
+  .dl{background:none;border:0}
+  .dlp{display:inline-block;color:#fff;font-size:11px;font-weight:bold;padding:1px 6px;border-radius:9px;white-space:nowrap;box-shadow:0 1px 2px #0005}
+  .day .ov{font-size:12px;margin-top:3px}
+  .day .tm{font-size:12px;margin-top:4px;color:#1f2933}
+  .day .tl{font-size:12px;color:#5f6b7a;margin:2px 0 0 0;padding-left:14px}
+  .day .tl li{margin:1px 0}
+  .day details{font-size:12px;margin-top:5px;color:#1f2933}
+  .day details summary{cursor:pointer;color:#1971c2}
+  .day details p{margin:4px 0;line-height:1.4}
+  .late{color:#c92a2a;font-weight:bold}
+  .pp p{margin:4px 0}
+  .day.sel{border-color:#1f2933;box-shadow:0 0 0 1px #1f2933}
+  @media (max-width:700px){#app{flex-direction:column}#side{width:auto;height:42%;border-right:0;border-bottom:1px solid #d9dee4}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <header>
+      <h1>Thailand charter routes</h1>
+      <div class="sub">Lola 2 from Phuket Yacht Haven · Fri Mar 19 – Fri Mar 26, 2027 · daylight sailing only</div>
+    </header>
+    <div class="tabs">
+      <button data-r="A">A: with Phi Phi</button>
+      <button data-r="B">B: no Phi Phi</button>
+      <button data-r="both">Both</button>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div id="days"></div>
+    <div class="warn">Distances follow the drawn line, which matched the Southeast Asia Pilot's route distances from Yacht Haven to within about 10%. Times assume a 6 kn average, a 10:00 start (14:00 on day 1, 09:15 on the last day), and the stop lengths shown. Anchorage notes are from the Southeast Asia Pilot and charter guides where available; "unknown" means I found nothing. Not for navigation: check everything at the Asia Marine briefing.</div>
+    <div class="legend">
+      <span class="dot" style="background:#2f9e44"></span>Hong (kayak lagoon)<br>
+      <span class="dot" style="background:#1c7ed6"></span>Blue water / snorkel / beach<br>
+      <span class="nb" style="background:#d9480f;width:16px;height:16px;font-size:10px;border-width:1px">1</span> Numbered badge = night number, in the route's colour<br>
+      <span class="dlp" style="background:#495057">Day 3</span> Label on each day's leg<br>
+      <span class="dot" style="background:#868e96"></span>Skipped or optional<br>
+      Dashed line = optional or spare-day leg
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+<script>
+// Positions [lat, lon]. Anchorages marked "Pilot" use Southeast Asia Pilot positions; others are approximate.
+const P = {
+  yh:      [8.1709, 98.3404],  // Yacht Haven Marina (OSM)
+  ch1:     [8.1463, 98.3562],  // down the channel
+  ch2:     [8.1225, 98.3948],  // round the peninsula tip
+  ch3:     [8.1395, 98.4480],
+  phanak:  [8.1840, 98.4950],  // Koh Phanak (OSM 8.1837, 98.4898)
+  hongP:   [8.2253, 98.5016],  // Koh Hong (Phang Nga), anchorage A (Pilot 08°13.518N 98°30.098E)
+  ynN:     [8.2050, 98.6300],  // north of Koh Yao Noi
+  roi:     [8.1990, 98.6130],  // Koh Roi (OSM 8.1934, 98.6129)
+  yaoNoiN: [8.1726, 98.6360],  // Ao Muang, Paradise Koh Yao (Pilot 08°10.357N 98°38.158E)
+  yaoNoiE: [8.1250, 98.6600],
+  hongK:   [8.0780, 98.6840],  // Koh Hong, Krabi (OSM 8.0781, 98.6773)
+  railay:  [8.0106, 98.8349],  // Railay West (Pilot 08°00.637N 98°50.094E)
+  poda:    [7.9710, 98.8030],  // Koh Poda (OSM 7.9713, 98.8085)
+  ppE:     [7.7620, 98.8120],
+  longB:   [7.7260, 98.7900],  // off Long Beach, Phi Phi Don (approx.; resort OSM 7.7286, 98.7880)
+  ppS:     [7.7120, 98.7680],  // south of Ton Sai bay mouth
+  tsS:     [7.7160, 98.7850],  // off the headland between Long Beach and Ton Sai
+  tonSai:  [7.7342, 98.7681],  // Ton Sai Bay anchorage (Pilot 07°44.054N 98°46.087E)
+  ppW:     [7.7450, 98.7350],
+  pileh:   [7.6830, 98.7720],  // Phi Phi Lae, Pileh (OSM 7.6831, 98.7677)
+  bida:    [7.6550, 98.7720],  // Koh Bida Nok (OSM 7.6544, 98.7676)
+  yySouth: [7.8790, 98.6100],  // off Koh Yao Yai south tip
+  yySW:    [7.8840, 98.5790],
+  yyLJ:    [7.9319, 98.5721],  // Loh Jark Bay, Koh Yao Yai (Pilot 07°55.914N 98°34.324E)
+  khai:    [7.8930, 98.5220],  // Koh Khai Nok (OSM 7.8919, 98.5150)
+  naka:    [8.0499, 98.4725],  // Koh Naka Yai east coast (Pilot 08°02.994N 98°28.351E)
+  rang:    [7.9560, 98.4520],  // Koh Rang Yai (OSM 7.9561, 98.4467)
+  panyi:   [8.3340, 98.5050],
+  jb:      [8.2740, 98.5010],
+};
+const STOPS = {
+  yh:     {name:'Phuket Yacht Haven Marina', kind:'marina', note:'Check-in Fri Mar 19 at 12:00. Boat back Fri Mar 26 by 12:00.'},
+  phanak: {name:'Koh Phanak', kind:'hong', note:'Cave into a hong, about 50 m by kayak. Sea-kayak tours arrive mid-morning. Moorings guide lists it as an alternative anchorage to Koh Hong.'},
+  hongP:  {name:'Koh Hong (Phang Nga)', kind:'night', note:'The largest hong in Phang Nga Bay. Paddle it after breakfast, before the tours (kayak only; dinghies are banned from the main cave). Ao Phang Nga National Park fee: about 300 THB per adult and 150 THB per child, with a receipt valid for several days (2022 listing and a January 2025 sailing blog). The older guides say 400 THB (Pilot) and 200 THB (Helm). The Pilot puts it 16 nm from Yacht Haven.',
+    anch:'Good (sourced). Between Koh Hong and the shallows west of Koh Na Khae, about 12 m on mud, "good holding", "suitable for both seasons" (Pilot). No moorings; rangers have put a buoyed rope round the island. Very busy with tours by day, quiet at night. Strong currents in the channels at spring tides.',
+    alt:'Koh Hong anchorage B, about 0.4 nm south outside the small cave: 4–5 m on mud (Pilot; holding not stated). Koh Phanak, about 2.5 nm south (Moorings guide; quality not stated).',
+    dinner:'None: it\'s a national park. Dinner aboard. The nearest restaurants are on Koh Yao Noi, about 8 nm away.'},
+  roi:    {name:'Koh Roi', kind:'blue', note:'Small island off northern Koh Yao Noi. Anchor on the southwest side, with an islet to the west giving extra protection (Moorings guide). A Route B swim stop.'},
+  yaoNoiN:{name:'Koh Yao Noi (Ao Muang, Paradise Koh Yao)', kind:'night', note:'Sandy bay in front of Paradise Koh Yao resort.',
+    anch:'Fair, partly sourced. 10–12 m on mud, about 100 m southwest of a small rocky outcrop. "Reasonably well sheltered, especially in the southwest season" (Pilot). Shelter in the northeast season (our trip) is not stated.',
+    alt:'Koh Yao Noi NW Bay, about 1 nm northwest: 4–5 m on mud, "good holding", sheltered in both seasons, but the bay dries far out at low tide (Pilot). Koh Yao Island Resort bay, about 3.5 nm south on the east coast: 8–10 m on mud, light conditions only (Pilot).',
+    dinner:'Paradise Koh Yao resort restaurant, about 0.1 nm by dinghy to the floating dinghy jetty (marked channel, all-tide access). The Pilot says it was open to yachts "at the time of writing", so call ahead.'},
+  hongK:  {name:'Koh Hong (Krabi)', kind:'hong', note:'Lagoon inside the island plus a beach. Clearer water. Busy 10:00–15:00. Some national-park moorings at the north anchorage, in 15–20 m (Pilot).'},
+  railay: {name:'Railay West', kind:'night', note:'Limestone cliffs and plenty of restaurants. The liveliest night on either route.',
+    anch:'Good in our season, partly sourced. Centre of the bay, 4–5 m on sand. Watch the reef at the southern end (Pilot). No moorings and no dinghy dock (Moorings guide). Bumpy from longtails by day, quieter at night. It faces west, so it should be out of the northeast wind, but the Pilot doesn\'t state its seasonal shelter.',
+    alt:'Phra Nang Beach, about 0.5 nm south: 5–6 m on sand, northeast monsoon only, room for 3–4 boats (Pilot). Ao Nang, about 1.5 nm north: "a secure haven in the northeast monsoon", anchor in 4–5 m well offshore (Pilot). East Railay, about 2 nm round the headland: shelter from westerly wind and swell, but supply boats and longtails (Pilot).',
+    dinner:'Restaurants line Railay West beach, about 0.1–0.2 nm by dinghy (beach landing). More on Railay\'s walking street and East Railay, a 5–10 minute walk.'},
+  poda:   {name:'Koh Poda / Tup / Chicken', kind:'blue', note:'Sandbar at low tide, snorkelling, turquoise water. Quiet after about 17:00.'},
+  longB:  {name:'Phi Phi Don, Long Beach', kind:'blue', note:'Quieter south-facing beach across from Phi Phi Lae. An afternoon swim stop on the way to Ton Sai. Paradise Pearl has a beach restaurant (non-guest access not confirmed). Anchorage quality is unknown, so treat it as a daytime stop.'},
+  tonSai: {name:'Phi Phi Don, Ton Sai Bay', kind:'night', note:'The main bay and village of Phi Phi Don. Lively in the evening.',
+    anch:'Good (sourced). Head of the bay on the west side, 10–12 m on sand, close to the fringing reef. "Ton Sai Bay is secure in both seasons" (Pilot). Busy: the many dive moorings are all private (don\'t pick one up), swinging room can be hard to find, ferries use the east-side jetty, and there are unlit longtails at night (Pilot). Arrive by mid-afternoon to get a spot.',
+    alt:'Ao Yongkasem / Loh Dalum on the north side, about 5 nm by sea (Pilot): government moorings, "an ideal overnight stop at any time of the year", and yachts can stay after 17:00. Loh Dalum is a party beach. Long Beach, about 1.5 nm east: anchorage quality unknown. Ao Loh Moo Dee: southwest season only (Pilot).',
+    dinner:'Ton Sai village restaurants and bars line the bay, about 0.1–0.3 nm by dinghy. Dinghies land only at the water pier in front of the hospital, at the western end of the beach (Pilot). It\'s the busiest evening of the trip; quieter places are at the west end.'},
+  pileh:  {name:'Phi Phi Lae (Pileh lagoon)', kind:'blue', note:'Explore by dinghy or kayak. Not an anchorage: deep water and busy with tour boats (Moorings guide). Maya Bay is mooring-buoy only, with no anchoring, and has visitor rules.'},
+  bida:   {name:'Koh Bida Nok', kind:'blue', note:'Snorkelling. Whale shark sightings: divers in June 2023, and a report in March 2026.'},
+  yyLJ:   {name:'Koh Yao Yai, Loh Jark Bay', kind:'night', note:'West-coast bay off the pier for Prunai town.',
+    anch:'Fair, partly sourced. 5–10 m off the concrete pier (Pilot; bottom and holding not stated). One charter guide says anywhere along the west coast makes a good overnight anchorage in the northeast monsoon.',
+    alt:'South end of Koh Yao Yai, about 2 nm south: 4–6 m on mud, "Holding is firm at this spot", good overnight shelter in the northeast monsoon. Keep well off the rocky point to the west (Pilot). Loh Paret Bay, about 3 nm north: "great holding" in 4–7 m, but anchor at the south end at night to avoid a karaoke club (Pilot).',
+    dinner:'"A few resorts and restaurants" at the pier, about 0.1–0.2 nm by dinghy (Pilot; not named). More choice at Loh Paret, about 3 nm north: Together, Blue Tamarind, and Santhiya resort, which welcomes yachts. Get there by taxi from Prunai, or move the boat (+3 nm).'},
+  khai:   {name:'Koh Khai Nok', kind:'blue', note:'Beach and snorkel stop. Day-trippers at midday.'},
+  naka:   {name:'Koh Naka Yai', kind:'night', note:'East-coast beaches 9–11 nm from Yacht Haven, for an easy final morning.',
+    anch:'Good (sourced). 5–10 m on sand, "a suitable overnight stop in either season" (Pilot). Watch the isolated coral heads off the north fringing reef. Busy with tour boats by day.',
+    alt:'Koh Naka Noi, about 1.5 nm southwest: 5–10 m south of the access jetty (Pilot). Ao Po, about 2.5 nm west on the Phuket side: 3–6 m on mud, village shops and fuel (Pilot). Ao Po Grand Marina berths, about 2.5 nm northwest, if you\'d rather be at a dock.',
+    dinner:'"Numerous F&B outlets" on the east-coast beaches, with three floating jetties, about 0.1 nm by dinghy. The middle beach is all-tide; the north and south beaches are high tide only (Pilot).'},
+  rang:   {name:'Koh Rang Yai', kind:'blue', note:'Long beach with a beach club. Its restaurant is open in the daytime only (Moorings guide). Route B spare-day hop.'},
+  panyi:  {name:'Koh Panyi', kind:'skip', note:'Stilt fishing village with seafood restaurants. Optional lunch on the Route A long version (touristy at midday).'},
+  jb:     {name:'James Bond Island (Khao Phing Kan)', kind:'skip', note:'Skipped on both routes: a crowded tourist stop.'},
+};
+// Planning speed: 6 kn average (light late-March winds, mixed sailing and motoring; the Saona 47 averaged 6.0 kn on ARC crossings).
+// 7.5 kn = motoring on both engines (cruise is about 8 kn).
+const SPEED=6, FAST=7.5, FACTOR=1.0;  // Drawn paths matched SE Asia Pilot route distances within about -11% to +5%, so no extra allowance
+// Each day: start time, path (keys into P), stops: {key: minutes ashore or in the water}
+const ROUTES = {
+  A: {name:'Route A: with Phi Phi', color:'#d9480f', days:[
+    {d:'Fri 19 (pm)', t:'Yacht Haven → past Koh Phanak → Koh Hong', path:['yh','ch1','ch2','ch3','phanak','hongP'], start:'14:00', stops:{}, why:'Check-in at 12:00 plus the briefing, so leave about 14:00. Look at Koh Phanak in passing; paddle it another time.', tags:['hong'], dinner:'Aboard (national park)'},
+    {d:'Sat 20', t:'Koh Hong hong at breakfast → Koh Yao Noi', path:['hongP','ynN','yaoNoiN'], start:'10:00', stops:{}, why:'Paddle the hong around 08:00–09:30, before the tours, then leave.', tags:['hong'], dinner:'Paradise Koh Yao resort'},
+    {d:'Sun 21', t:'Koh Yao Noi → Koh Hong (Krabi) → Railay', path:['yaoNoiN','yaoNoiE','hongK','railay'], start:'10:00', stops:{hongK:90}, tags:['hong','blue'], dinner:'Railay West beach restaurants'},
+    {d:'Mon 22', t:'Railay → Poda / Tup / Chicken → Long Beach swim → Ton Sai Bay', path:['railay','poda','ppE','longB','tsS','ppS','tonSai'], start:'10:00', stops:{poda:90,longB:60}, tags:['blue'], dinner:'Ton Sai village'},
+    {d:'Tue 23', t:'Phi Phi day: Phi Phi Lae, Koh Bida Nok, back to Ton Sai', path:['tonSai','ppS','pileh','bida','ppS','tonSai'], start:'10:00', stops:{pileh:60,bida:90}, tags:['blue','spare'], dinner:'Ton Sai again', opt:true},
+    {d:'Wed 24', t:'Long day: Ton Sai → round the south tip of Yao Yai → Loh Jark Bay', path:['tonSai','ppS','ppW','yySouth','yySW','yyLJ'], start:'10:00', stops:{}, tags:['blue','long'], dinner:'Loh Jark pier restaurants'},
+    {d:'Thu 25', t:'Koh Yao Yai → Koh Khai → Koh Naka Yai', path:['yyLJ','khai','naka'], start:'10:00', stops:{khai:90}, tags:['blue'], dinner:'Naka Yai beach restaurants'},
+    {d:'Fri 26', t:'Koh Naka Yai → Yacht Haven by 12:00', path:['naka','ch2','ch1','yh'], start:'09:15', stops:{}, why:'The boat must be back by 12:00, so leave by about 09:15.', tags:[], dinner:'—'},
+  ]},
+  B: {name:'Route B: no Phi Phi', color:'#1971c2', days:[
+    {d:'Fri 19 (pm)', t:'Yacht Haven → past Koh Phanak → Koh Hong', path:['yh','ch1','ch2','ch3','phanak','hongP'], start:'14:00', stops:{}, why:'Check-in at 12:00 plus the briefing, so leave about 14:00.', tags:['hong'], dinner:'Aboard (national park)'},
+    {d:'Sat 20', t:'Koh Hong hong at breakfast → Koh Roi → Koh Yao Noi', path:['hongP','roi','ynN','yaoNoiN'], start:'10:00', stops:{roi:60}, why:'Paddle the hong around 08:00–09:30, before the tours, then leave.', tags:['hong'], dinner:'Paradise Koh Yao resort'},
+    {d:'Sun 21', t:'Koh Yao Noi → Koh Hong (Krabi) → Railay', path:['yaoNoiN','yaoNoiE','hongK','railay'], start:'10:00', stops:{hongK:90}, tags:['hong','blue'], dinner:'Railay West beach restaurants'},
+    {d:'Mon 22', t:'Easy day: Poda / Tup / Chicken and back', path:['railay','poda','railay'], start:'10:00', stops:{poda:150}, tags:['blue','spare'], dinner:'Railay again', opt:true},
+    {d:'Tue 23', t:'Long day: Railay → round the south tip of Yao Yai → Loh Jark Bay', path:['railay','poda','yySouth','yySW','yyLJ'], start:'10:00', stops:{}, tags:['blue','long'], dinner:'Loh Jark pier restaurants'},
+    {d:'Wed 24', t:'Koh Yao Yai → Koh Khai → Koh Naka Yai', path:['yyLJ','khai','naka'], start:'10:00', stops:{khai:90}, tags:['blue'], dinner:'Naka Yai beach restaurants'},
+    {d:'Thu 25', t:'Easy day: Naka Yai beach, or hop to Koh Rang Yai', path:['naka','rang','naka'], start:'10:00', stops:{rang:150}, tags:['blue','spare'], dinner:'Naka Yai again', opt:true},
+    {d:'Fri 26', t:'Koh Naka Yai → Yacht Haven by 12:00', path:['naka','ch2','ch1','yh'], start:'09:15', stops:{}, why:'The boat must be back by 12:00, so leave by about 09:15.', tags:[], dinner:'—'},
+  ]},
+};
+const toMin=t=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
+const hhmm=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(Math.round(m%60)).padStart(2,'0')}`;
+const dur=m=>{m=Math.round(m/5)*5;const h=Math.floor(m/60),mm=m%60;return h?`${h} h${mm?` ${mm} min`:''}`:`${mm} min`;};
+function schedule(day){
+  // walk the path; pause at stops; return timeline + totals
+  let t=toMin(day.start), nm=0, under=0; const items=[{t, txt:`Depart ${STOPS[day.path[0]]?STOPS[day.path[0]].name:''}`}];
+  for(let i=1;i<day.path.length;i++){
+    const seg=hav(P[day.path[i-1]],P[day.path[i]])*FACTOR; nm+=seg; const mins=seg/SPEED*60; under+=mins; t+=mins;
+    const k=day.path[i];
+    if(day.stops[k]&&i<day.path.length-1){items.push({t,txt:`${STOPS[k].name} (${dur(day.stops[k])} stop)`,end:t+day.stops[k]});t+=day.stops[k];}
+  }
+  const last=day.path[day.path.length-1];
+  items.push({t,txt:`Arrive ${STOPS[last].name}`});
+  return {items,arrive:t,nm,under,fast:under*SPEED/FAST};
+}
+function hav(a,b){const R=3440.065,r=x=>x*Math.PI/180;const dl=r(b[0]-a[0]),dn=r(b[1]-a[1]);
+  const h=Math.sin(dl/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+const pathNm = p => p.slice(1).reduce((s,k,i)=>s+hav(P[p[i]],P[k]),0);
+
+const map = L.map('map',{zoomControl:true}).setView([8.0,98.6],10);
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'}).addTo(map);
+const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Imagery © Esri'});
+L.control.layers({'Map':osm,'Satellite':sat},null,{position:'topright'}).addTo(map);
+L.control.scale({metric:true,imperial:false,position:'bottomleft'}).addTo(map);
+
+const kindColor={hong:'#2f9e44',blue:'#1c7ed6',night:'#ffffff',marina:'#212529',skip:'#868e96'};
+const stopLayer=L.layerGroup().addTo(map);
+for(const [k,s] of Object.entries(STOPS)){
+  if(s.kind==='night'||s.kind==='marina') continue;
+  const m=L.circleMarker(P[k],{radius:s.kind==='marina'?8:7,color:s.kind==='night'?'#212529':'#fff',weight:2,fillColor:kindColor[s.kind],fillOpacity:1});
+  m.bindPopup(`<b>${s.name}</b><br>${s.note}`);m.bindTooltip(s.name,{direction:'top',offset:[0,-6]});
+  m.addTo(stopLayer);STOPS[k].marker=m;
+}
+const routeLayers={A:L.layerGroup(),B:L.layerGroup()};
+const legLines={A:[],B:[]};
+for(const r of ['A','B']){
+  ROUTES[r].days.forEach((day,i)=>{
+    const ll=day.path.map(k=>P[k]);
+    const nm=pathNm(day.path);day.nm=nm;day.sch=schedule(day);
+    const line=L.polyline(ll,{color:ROUTES[r].color,weight:4,opacity:.85,dashArray:day.opt?'8 8':null,offset:r==='B'?3:0});
+    line.bindPopup(`<b>${ROUTES[r].name}</b><br><b>Day ${i+1} · ${day.d}:</b> ${day.t}<br>~${day.sch.nm.toFixed(0)} nm · underway ~${dur(day.sch.under)} at ${SPEED} kn<br>${day.sch.items.map(x=>x.end?`${hhmm(x.t)}–${hhmm(x.end)} ${x.txt}`:`${hhmm(x.t)} ${x.txt}`).join('<br>')}<br>Dinner: ${day.dinner}`,{maxWidth:320});
+    line.on('mouseover',()=>line.setStyle({weight:7}));line.on('mouseout',()=>line.setStyle({weight:4}));
+    line.addTo(routeLayers[r]);legLines[r].push(line);
+    // "Day N" pill at the middle of the leg
+    const mid=midPoint(day.path);
+    L.marker(mid,{interactive:false,icon:L.divIcon({className:'dl',html:`<span class="dlp" style="background:${ROUTES[r].color}">Day ${i+1}</span>`,iconSize:null,iconAnchor:r==='A'?[52,8]:[-6,8]})}).addTo(routeLayers[r]);
+    day.end=day.path[day.path.length-1];
+    day.night=(i<ROUTES[r].days.length-1)?i+1:null;
+  });
+}
+function midPoint(path){const pts=path.map(k=>P[k]);const segs=pts.slice(1).map((q,i)=>hav(pts[i],q));const tot=segs.reduce((a,b)=>a+b,0);
+  let acc=0;for(let i=0;i<segs.length;i++){if(acc+segs[i]>=tot/2){const f=(tot/2-acc)/segs[i];return [pts[i][0]+f*(pts[i+1][0]-pts[i][0]),pts[i][1]+f*(pts[i+1][1]-pts[i][1])];}acc+=segs[i];}return pts[0];}
+const shortDay=d=>d.d.replace(' (pm)','');
+const nightLayer=L.layerGroup().addTo(map);
+function drawNights(show){
+  nightLayer.clearLayers();
+  const groups={};
+  for(const r of show) ROUTES[r].days.forEach(day=>{ if(day.night){(groups[day.end]=groups[day.end]||{})[r]=(groups[day.end][r]||[]).concat([day]);} });
+  for(const [k,g] of Object.entries(groups)){
+    const badges=[],parts=[];
+    const same=show.length===2&&g.A&&g.B&&g.A.map(d=>d.night).join()===g.B.map(d=>d.night).join();
+    for(const r of show){ if(!g[r]) continue; g[r].forEach(d=>badges.push(`<span class="nb" style="background:${ROUTES[r].color}">${d.night}</span>`)); }
+    const fmt=ds=>(ds.length>1?`Nights ${ds[0].night}–${ds[ds.length-1].night}`:`Night ${ds[0].night}`)+' · '+ds.map(shortDay).join(', ');
+    if(same||show.length===1){parts.push(fmt(g[show.find(r=>g[r])]));}
+    else for(const r of show){ if(g[r]) parts.push(`<span style="color:${ROUTES[r].color};font-weight:bold">${r}:</span> ${fmt(g[r])}`); }
+    const html=`<div class="nl">${badges.join('')}<div class="np"><b>${STOPS[k].name}</b><br>${parts.join('<br>')}</div></div>`;
+    const m=L.marker(P[k],{icon:L.divIcon({className:'nlwrap',html,iconSize:null,iconAnchor:[11,11]}),zIndexOffset:1000});
+    const st=STOPS[k];m.bindPopup(`<div class="pp"><b>${st.name}</b><p>${st.note}</p><p><b>Anchorage:</b> ${st.anch}</p><p><b>Backup anchorages:</b> ${st.alt}</p><p><b>Dinner:</b> ${st.dinner}</p></div>`,{maxWidth:360});m.addTo(nightLayer);
+  }
+  const yh=L.marker(P.yh,{icon:L.divIcon({className:'nlwrap',html:`<div class="nl" style="flex-direction:column;align-items:flex-start;transform:translateX(calc(-50% + 11px))"><span class="nb fin">Start / finish</span><div class="np" style="margin:3px 0 0 0"><b>Yacht Haven Marina</b><br>Check-in Fri Mar 19, 12:00<br>Back Fri Mar 26 by 12:00</div></div>`,iconSize:null,iconAnchor:[11,11]}),zIndexOffset:900});
+  yh.bindPopup(`<b>${STOPS.yh.name}</b><br>${STOPS.yh.note}`);yh.addTo(nightLayer);
+}
+
+function render(sel){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.r===sel));
+  for(const r of ['A','B']){ (sel===r||sel==='both')?routeLayers[r].addTo(map):map.removeLayer(routeLayers[r]); }
+  const list=document.getElementById('days');list.innerHTML='';
+  const sums=['A','B'].map(r=>{const t=ROUTES[r].days.reduce((s,d)=>s+d.nm,0);const mx=Math.max(...ROUTES[r].days.map(d=>d.nm));return {r,t,mx};});
+  const S=document.getElementById('summary');
+  S.innerHTML=sums.filter(s=>sel==='both'||s.r===sel).map(s=>{const u=ROUTES[s.r].days.reduce((a,d)=>a+d.sch.under,0);return `<b style="color:${ROUTES[s.r].color}">${ROUTES[s.r].name}</b>: ~${(s.t*FACTOR).toFixed(0)} nm, ~${dur(u)} underway in total at ${SPEED} kn, longest day ~${(s.mx*FACTOR).toFixed(0)} nm`;}).join('<br>')
+    + '<br><span class="sub">BVI 2024 for comparison: ~73 nm over 8 nights, ~9 nm per sailing day.</span>';
+  const show=sel==='both'?['A','B']:[sel];
+  for(const r of show){
+    if(sel==='both'){const h=document.createElement('div');h.className='summary';h.innerHTML=`<b style="color:${ROUTES[r].color}">${ROUTES[r].name}</b>`;list.appendChild(h);}
+    ROUTES[r].days.forEach((day,i)=>{
+      const el=document.createElement('div');el.className='day';
+      const tags=day.tags.map(t=>`<span class="tag ${t}">${{hong:'Hong',blue:'Blue water',spare:'Spare day',long:'Long day'}[t]}</span>`).join('');
+      const ov=day.night?`<span class="nb" style="background:${ROUTES[r].color};width:16px;height:16px;font-size:10px;border-width:1px">${day.night}</span> Overnight: <b>${STOPS[day.end].name}</b>`:`<b>Finish:</b> Yacht Haven by 12:00`;
+      const sc=day.sch, late=sc.arrive>toMin('18:00');
+      const tl=sc.items.map(x=>`<li>${x.end?`${hhmm(x.t)}–${hhmm(x.end)}`:hhmm(x.t)} ${x.txt}</li>`).join('');
+      const st=STOPS[day.end];
+      const det=day.night&&st.anch?`<details><summary>Anchorage, backups and dinner</summary><p><b>Anchorage:</b> ${st.anch}</p><p><b>Backups:</b> ${st.alt}</p><p><b>Dinner:</b> ${st.dinner}</p></details>`:'';
+      el.innerHTML=`<span class="nm" style="color:${ROUTES[r].color}">~${sc.nm.toFixed(0)} nm</span><div class="t">Day ${i+1} · ${day.d}</div><div class="m">${day.t}</div>
+        <div class="tm">Underway <b>~${dur(sc.under)}</b> at ${SPEED} kn <span class="sub">(~${dur(sc.fast)} motoring at ${FAST} kn)</span></div>
+        <ul class="tl">${tl}</ul>${late?'<div class="late">Arrives after 18:00: cut a stop (sunset is about 18:36; no sailing after dark).</div>':''}
+        ${day.why?`<div class="m">${day.why}</div>`:''}
+        <div class="m">Dinner: ${day.dinner}</div><div class="ov">${ov}</div>${det}${tags}`;
+      el.querySelectorAll('details').forEach(d=>d.addEventListener('click',e=>e.stopPropagation()));
+      el.onclick=()=>{document.querySelectorAll('.day').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');
+        ['A','B'].forEach(q=>legLines[q].forEach(x=>x.setStyle({weight:4,opacity:.35})));const l=legLines[r][i];l.setStyle({weight:7,opacity:1});l.bringToFront();if(!map.hasLayer(routeLayers[r]))routeLayers[r].addTo(map);map.fitBounds(l.getBounds(),{padding:[60,60],maxZoom:12});l.openPopup(l.getBounds().getCenter());};
+      list.appendChild(el);
+    });
+  }
+  ['A','B'].forEach(q=>legLines[q].forEach(x=>x.setStyle({weight:4,opacity:.85})));
+  drawNights(show);
+  const b=L.latLngBounds([]);show.forEach(r=>legLines[r].forEach(l=>b.extend(l.getBounds())));map.fitBounds(b,{padding:[30,30]});
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>render(b.dataset.r));
+const qs=new URLSearchParams(location.search);
+render(qs.get('route')||'both');
+if(qs.get('at')){const [la,lo,z]=qs.get('at').split(',').map(Number);map.setView([la,lo],z||12);}
+if(qs.get('sat'))sat.addTo(map);
+</script>
+</body>
+</html>
