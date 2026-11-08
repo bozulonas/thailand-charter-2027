@@ -31,6 +31,24 @@
   .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1px solid #0003}
   .warn{margin:0 16px 12px;padding:8px 10px;font-size:12px;background:#fff6e5;border:1px solid #f5d9a8;border-radius:6px;line-height:1.4}
   .leaflet-popup-content{font-size:13px;line-height:1.4}
+  #map{position:relative}
+  .phbtn{background:#fff;border:2px solid #0003;border-radius:6px;padding:6px 10px;font:bold 13px Arial;cursor:pointer;box-shadow:0 1px 4px #0003}
+  .phbtn.on{background:#1f2933;color:#fff}
+  #drawer{position:absolute;right:10px;top:60px;bottom:30px;width:340px;max-width:calc(100% - 20px);background:#fff;border-radius:10px;box-shadow:0 4px 18px #0004;z-index:1000;display:none;flex-direction:column;font-size:13px}
+  #drawer.open{display:flex}
+  #drawer header{padding:10px 12px;border-bottom:1px solid #e3e7ec}
+  #drawer header b{font-size:14px}
+  #drawer .x{float:right;cursor:pointer;border:0;background:none;font-size:18px;line-height:1}
+  #drawer .src{display:flex;gap:6px;margin-top:6px}
+  #drawer .src button{flex:1;padding:4px;border:1px solid #c9d1da;background:#fff;border-radius:5px;cursor:pointer;font-size:12px}
+  #drawer .src button.on{background:#1f2933;color:#fff;border-color:#1f2933}
+  #drawer .body{overflow-y:auto;padding:8px 10px;flex:1}
+  .ph{margin:0 0 12px}
+  .ph img{width:100%;max-height:240px;object-fit:cover;border-radius:6px;display:block;background:#eef1f4;min-height:80px}
+  .ph .cap{font-size:11px;color:#5f6b7a;margin-top:3px;line-height:1.35}
+  .ph .cap b{color:#1f2933;font-size:12px}
+  .poi-pop img{width:220px;border-radius:5px;display:block;margin:4px 0}
+  .poi-pop button{margin-top:4px;padding:3px 8px;border:1px solid #c9d1da;border-radius:5px;background:#fff;cursor:pointer}
   .nlwrap{background:none;border:0}
   .nl{display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:12px}
   .nb{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;color:#fff;font-weight:bold;font-size:12px;border:2px solid #fff;box-shadow:0 1px 3px #0006}
@@ -76,7 +94,7 @@
       Dashed line = optional or spare-day leg
     </div>
   </div>
-  <div id="map"></div>
+  <div id="map"><div id="drawer"><header><button class="x" title="Close">×</button><b id="dtitle">Photos</b><div class="sub" id="dsub"></div><div class="src"><button data-s="commons" class="on">Wikimedia photos</button><button data-s="google">Google Maps</button></div></header><div class="body" id="dbody"></div></div></div>
 </div>
 <script>
 // Positions [lat, lon]. Anchorages marked "Pilot" use Southeast Asia Pilot positions; others are approximate.
@@ -283,10 +301,112 @@ function render(sel){
   const b=L.latLngBounds([]);show.forEach(r=>legLines[r].forEach(l=>b.extend(l.getBounds())));map.fitBounds(b,{padding:[30,30]});
 }
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>render(b.dataset.r));
+
+// ---------- Photo explorer ----------
+// Sources: Wikimedia Commons (free, no key) and Google Maps Places photos (needs a browser key; see GOOGLE_KEY).
+// GOOGLE_KEY: a Google Maps Platform browser key restricted to this site's address. Leave '' to disable;
+// a key can also be supplied per-device with ?gkey=... (stored in localStorage).
+const GOOGLE_KEY = '';
+if(new URLSearchParams(location.search).get('gkey')) localStorage.setItem('gkey', new URLSearchParams(location.search).get('gkey'));
+const gkey = () => GOOGLE_KEY || localStorage.getItem('gkey') || '';
+const esc = t => String(t??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const strip = h => { const d=document.createElement('div'); d.innerHTML=h||''; return d.textContent.trim(); };
+const drawer=document.getElementById('drawer'), dbody=document.getElementById('dbody');
+L.DomEvent.disableClickPropagation(drawer); L.DomEvent.disableScrollPropagation(drawer);
+let photoMode=false, here=null, src='commons', hereMarker=null;
+drawer.querySelector('.x').onclick=()=>{drawer.classList.remove('open'); if(hereMarker) map.removeLayer(hereMarker);};
+drawer.querySelectorAll('.src button').forEach(b=>b.onclick=()=>{src=b.dataset.s;drawer.querySelectorAll('.src button').forEach(x=>x.classList.toggle('on',x===b)); if(here) showPhotos(here.lat,here.lng,here.label);});
+
+async function commonsPhotos(lat,lng,radius=3000){
+  const u=`https://commons.wikimedia.org/w/api.php?action=query&generator=geosearch&ggsnamespace=6&ggscoord=${lat}|${lng}&ggsradius=${radius}&ggslimit=40&prop=imageinfo|coordinates&iiprop=url|extmetadata&iiurlwidth=480&format=json&origin=*`;
+  const r=await (await fetch(u)).json(); const pages=Object.values(r.query?.pages||{});
+  return pages.filter(p=>p.imageinfo&&/\.(jpe?g|png|webp)$/i.test(p.title)).map(p=>{const ii=p.imageinfo[0],m=ii.extmetadata||{};
+    const c=p.coordinates?.[0]; const dist=c?hav([lat,lng],[c.lat,c.lon])*1.852:null;
+    return {img:ii.thumburl,link:ii.descriptionurl,title:strip(m.ObjectName?.value)||p.title.replace(/^File:|\.\w+$/g,''),
+      credit:`${strip(m.Artist?.value)||'Unknown author'} · ${strip(m.LicenseShortName?.value)||'see licence'}`,dist};})
+    .sort((a,b)=>(a.dist??99)-(b.dist??99));
+}
+let gReady=null;
+function loadGoogle(){
+  if(gReady) return gReady;
+  gReady=new Promise((res,rej)=>{window.__gmInit=res;const sc=document.createElement('script');
+    sc.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(gkey())}&v=weekly&loading=async&callback=__gmInit`;sc.onerror=rej;document.head.appendChild(sc);});
+  return gReady;
+}
+async function googlePhotos(lat,lng,radius=5000){
+  await loadGoogle(); const {Place}=await google.maps.importLibrary('places');
+  const req=types=>Place.searchNearby({fields:['displayName','location','photos','googleMapsURI','primaryTypeDisplayName'],
+    locationRestriction:{center:{lat,lng},radius},includedTypes:types,maxResultCount:20});
+  let res; try{res=await req(['tourist_attraction','national_park','park','beach']);}catch(e){res=await req(['tourist_attraction','national_park','park']);}
+  const out=[];
+  for(const pl of res.places||[]) for(const ph of (pl.photos||[]).slice(0,3)){
+    const a=(ph.authorAttributions||[])[0];
+    out.push({img:ph.getURI({maxHeight:480}),link:pl.googleMapsURI,title:pl.displayName+(pl.primaryTypeDisplayName?` · ${pl.primaryTypeDisplayName}`:''),
+      credit:a?`Photo: <a href="${esc(a.uri)}" target="_blank" rel="noopener">${esc(a.displayName)}</a> · Google Maps`:'Google Maps',raw:true,
+      dist:pl.location?hav([lat,lng],[pl.location.lat(),pl.location.lng()])*1.852:null});
+  }
+  return out;
+}
+async function showPhotos(lat,lng,label){
+  here={lat,lng,label}; drawer.classList.add('open');
+  if(hereMarker) map.removeLayer(hereMarker);
+  hereMarker=L.circleMarker([lat,lng],{radius:9,color:'#7048e8',weight:3,fill:false}).addTo(map);
+  document.getElementById('dtitle').textContent=label||'Photos near this spot';
+  document.getElementById('dsub').textContent=`${lat.toFixed(4)}, ${lng.toFixed(4)} · ${src==='google'?'within 5 km':'within 3 km'}`;
+  if(src==='google'&&!gkey()){dbody.innerHTML='<p>Google Maps photos need a Google Maps Platform key. Until one is added, use <b>Wikimedia photos</b>.</p>';return;}
+  dbody.innerHTML='<p class="sub">Loading photos…</p>';
+  try{
+    const items=src==='google'?await googlePhotos(lat,lng):await commonsPhotos(lat,lng);
+    if(!items.length){dbody.innerHTML='<p>No photos found within range. Try clicking closer to an island or beach.</p>';return;}
+    dbody.innerHTML=items.map(it=>`<div class="ph"><a href="${esc(it.link)}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(it.img)}" alt="${esc(it.title)}"></a><div class="cap"><b>${esc(it.title)}</b>${it.dist!=null?` · ${it.dist.toFixed(1)} km away`:''}<br>${it.raw?it.credit:esc(it.credit)}</div></div>`).join('');
+  }catch(e){dbody.innerHTML=`<p>Couldn't load photos (${esc(e.message||e)}).</p>`;}
+}
+window.showPhotos=showPhotos;
+
+// Places of interest along the route (Wikipedia, free)
+const poiLayer=L.layerGroup(); let poiLoaded=false;
+const SKIP=/(District|Subdistrict|Tambon|Province|School|Hospital|Airport|Station|Municipality|Amphoe|Mueang|Constituency|Hotel|Resort|Temple school)/i;
+async function loadPOIs(){
+  if(poiLoaded) return; poiLoaded=true;
+  const pts=[...new Set(Object.values(ROUTES).flatMap(r=>r.days.flatMap(d=>d.path)))].map(k=>P[k]);
+  const seen=new Set();
+  for(let i=0;i<pts.length;i+=4){
+    await Promise.all(pts.slice(i,i+4).map(async([la,lo])=>{
+      const u=`https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${la}|${lo}&ggsradius=10000&ggslimit=20&prop=coordinates|pageimages|extracts&exintro=1&explaintext=1&exsentences=2&exlimit=20&piprop=thumbnail&pithumbsize=320&format=json&origin=*`;
+      try{const r=await (await fetch(u)).json();
+        for(const p of Object.values(r.query?.pages||{})){
+          if(seen.has(p.pageid)||SKIP.test(p.title)||!p.coordinates) continue; seen.add(p.pageid);
+          const c=p.coordinates[0];
+          const m=L.circleMarker([c.lat,c.lon],{radius:6,color:'#fff',weight:2,fillColor:'#7048e8',fillOpacity:1});
+          m.bindTooltip(p.title);
+          m.bindPopup(`<div class="poi-pop"><b>${esc(p.title)}</b>${p.thumbnail?`<img src="${esc(p.thumbnail.source)}" alt="">`:''}<div>${esc((p.extract||'').slice(0,260))}</div><a href="https://en.wikipedia.org/?curid=${p.pageid}" target="_blank" rel="noopener">Wikipedia</a> · <button onclick="showPhotos(${c.lat},${c.lon},'${esc(p.title).replace(/'/g,"\\'")}')">Photos nearby</button></div>`,{maxWidth:260});
+          m.addTo(poiLayer);
+        }}catch(e){}
+    }));
+  }
+}
+// Controls: photo mode + places layer
+const PhotoCtl=L.Control.extend({options:{position:'topleft'},onAdd(){
+  const d=L.DomUtil.create('div'); d.style.display='flex'; d.style.flexDirection='column'; d.style.gap='6px';
+  d.innerHTML='<button class="phbtn" id="phmode" title="Click anywhere on the map to see photos taken there">Explore photos</button><button class="phbtn" id="poibtn" title="Show places of interest near the routes">Places of interest</button>';
+  L.DomEvent.disableClickPropagation(d); return d;}});
+map.addControl(new PhotoCtl());
+document.getElementById('phmode').onclick=e=>{photoMode=!photoMode;e.target.classList.toggle('on',photoMode);map.getContainer().style.cursor=photoMode?'crosshair':'';
+  if(photoMode&&!drawer.classList.contains('open')){drawer.classList.add('open');dbody.innerHTML='<p>Click anywhere on the map, such as an island, beach or bay, to see photos taken near there.</p>';}};
+document.getElementById('poibtn').onclick=async e=>{const on=!map.hasLayer(poiLayer);e.target.classList.toggle('on',on);
+  if(on){poiLayer.addTo(map);e.target.textContent='Loading places…';await loadPOIs();e.target.textContent='Places of interest';}else map.removeLayer(poiLayer);};
+map.on('click',ev=>{if(photoMode) showPhotos(ev.latlng.lat,ev.latlng.lng);});
+// Every stop popup gets a "Photos" link
+map.on('popupopen',ev=>{const ll=ev.popup.getLatLng(), el=ev.popup.getElement(); if(!el||el.querySelector('.phlink')||el.querySelector('.poi-pop')) return;
+  const a=document.createElement('a');a.href='#';a.className='phlink';a.textContent='Photos near here';a.style.display='block';a.style.marginTop='6px';
+  a.onclick=e=>{e.preventDefault();showPhotos(ll.lat,ll.lng,(el.querySelector('b')||{}).textContent);};
+  const c=el.querySelector('.leaflet-popup-content'); if(c) c.appendChild(a);});
 const qs=new URLSearchParams(location.search);
 render(qs.get('route')||'both');
 if(qs.get('at')){const [la,lo,z]=qs.get('at').split(',').map(Number);map.setView([la,lo],z||12);}
 if(qs.get('sat'))sat.addTo(map);
+if(qs.get('photos')){const [la,lo]=qs.get('photos').split(',').map(Number);showPhotos(la,lo,qs.get('label')||null);}
+if(qs.get('poi'))document.getElementById('poibtn').click();
 </script>
 </body>
 </html>
